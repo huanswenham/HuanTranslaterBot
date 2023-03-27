@@ -16,10 +16,10 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 
 public class Bot extends TelegramLongPollingBot {
-  private String botUserName = "HuanTranslatorBot";
+  private final String botUserName = "HuanTranslatorBot";
   private Translator translator;
   private Boolean waitingTargetLang = false;
-  private String textToTranslate = null;
+  private String targetLangCode = null;
 
 
   public Bot() {
@@ -43,34 +43,65 @@ public class Bot extends TelegramLongPollingBot {
     var id = user.getId();
     var text = msg.getText();
 
-    if (waitingTargetLang) {
-      translateTextProtocol(id, text);
+    if (msg.isCommand()) {
+      commandProtocol(id, text);
     } else {
-      getLanguageProtocol(id, text);
+      if (waitingTargetLang) {
+        seTargetLanguageProtocol(id, text);
+      } else {
+        translateTextProtocol(id, text);
+      }
     }
   }
 
 
-  private void getLanguageProtocol(Long id, String text) {
-    textToTranslate = text;
+  private void commandProtocol(Long id, String command) {
+    if (command.equals("/help")) {
+      sendText(
+          id,
+          "Hello there, I am your helpful translator. To get started, simply set "
+              + "a target language that you want to translate to by typing /settargetlanguage. Once "
+              + "your target language is set, you can type in any text that you want it be translated into and"
+              + "I will translate it for you!\n\n"
+              + "If at any point of time you want to switch to another target language, just type "
+              + "/settargetlanguage and provide me the new target language that you want.");
+    } else if (command.equals("/settargetlanguage")) {
+      getLanguageProtocol(id);
+    }
+  }
+
+
+  private void getLanguageProtocol(Long id) {
     sendText(id, "Type in the language that you want me to translate into.");
     waitingTargetLang = true;
   }
 
 
-  private void translateTextProtocol(Long id, String text) {
+  private void seTargetLanguageProtocol(Long id, String text) {
     String targetLangCode = getTargetLanguageCode(text);
     if (targetLangCode == null) {
       sendText(id, "The language you provided is either not valid or unavailable,"
           + " try typing the language again.");
     } else {
-      try {
-        waitingTargetLang = false;
-        String translatedText = translateText(textToTranslate, targetLangCode);
+      waitingTargetLang = false;
+      this.targetLangCode = targetLangCode;
+      sendText(id, "Target language has been set. You can "
+          + "start typing in texts for me to translate!");
+    }
+  }
+
+
+  private void translateTextProtocol(Long id, String text) {
+    try {
+      if (this.targetLangCode == null) {
+        sendText(id, "Target language to be translated into has not yet been set. Please "
+            + "use /settargetlanguage to set the language that you want me to translate into.");
+      } else {
+        String translatedText = translateText(text, this.targetLangCode);
         sendText(id, translatedText);
-      } catch (Exception e) {
-        e.printStackTrace();
       }
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 
