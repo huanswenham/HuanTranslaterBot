@@ -3,6 +3,7 @@ package translatorBot;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 
@@ -13,9 +14,13 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import com.deepl.api.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+
 public class Bot extends TelegramLongPollingBot {
   private String botUserName = "HuanTranslatorBot";
   private Translator translator;
+  private Boolean waitingTargetLang = false;
+  private String textToTranslate = null;
+
 
   public Bot() {
     initializeTranslator();
@@ -38,11 +43,34 @@ public class Bot extends TelegramLongPollingBot {
     var id = user.getId();
     var text = msg.getText();
 
-    try {
-      String translatedText = translateText(text, "ZH");
-      sendText(id, translatedText);
-    } catch (Exception e) {
-      e.printStackTrace();
+    if (waitingTargetLang) {
+      translateTextProtocol(id, text);
+    } else {
+      getLanguageProtocol(id, text);
+    }
+  }
+
+
+  private void getLanguageProtocol(Long id, String text) {
+    textToTranslate = text;
+    sendText(id, "Type in the language that you want me to translate into.");
+    waitingTargetLang = true;
+  }
+
+
+  private void translateTextProtocol(Long id, String text) {
+    String targetLangCode = getTargetLanguageCode(text);
+    if (targetLangCode == null) {
+      sendText(id, "The language you provided is either not valid or unavailable,"
+          + " try typing the language again.");
+    } else {
+      try {
+        waitingTargetLang = false;
+        String translatedText = translateText(textToTranslate, targetLangCode);
+        sendText(id, translatedText);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
   }
 
@@ -59,9 +87,9 @@ public class Bot extends TelegramLongPollingBot {
   }
 
 
-  private String translateText(String text, String targetLang) throws Exception {
+  private String translateText(String text, String targetLangCode) throws Exception {
     TextResult result =
-        translator.translateText(text, null, targetLang);
+        translator.translateText(text, null, targetLangCode);
     String translateResult = result.getText();
     System.out.println(translateResult);
     return translateResult;
@@ -72,6 +100,27 @@ public class Bot extends TelegramLongPollingBot {
     // get DEEPL API Token and initialize translator
     String authKey = getBotConfigProperty("DEEPL_API_TOKEN");
     translator = new Translator(authKey);
+  }
+
+
+  private String getTargetLanguageCode(String targetLang) {
+    try {
+      List<Language> availLangs = getSourceLanguages();
+      for (Language language : availLangs) {
+        if (language.getName().equalsIgnoreCase(targetLang)) {
+          return language.getCode();
+        }
+      }
+      return null;
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+
+  private List<Language> getSourceLanguages() throws Exception {
+    return translator.getSourceLanguages();
   }
 
 
