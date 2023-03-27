@@ -137,7 +137,6 @@ public class Bot extends TelegramLongPollingBot {
 
 
   /*--------------------------------------------- Telegram Bot Helpers ---------------------------------------------*/
-
   /**
    * Send message to the user via the Telegram bot.
    * @param id user id
@@ -156,7 +155,6 @@ public class Bot extends TelegramLongPollingBot {
 
 
   /*------------------------------------------- DeepL Translator Helpers -------------------------------------------*/
-
   /**
    * Initialize DeepL translator with the DEEPL API token defined in botConfig.properties.
    */
