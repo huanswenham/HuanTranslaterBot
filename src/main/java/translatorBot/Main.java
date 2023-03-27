@@ -7,7 +7,9 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 public class Main {
   public static void main(String[] args) throws TelegramApiException {
     TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-    botsApi.registerBot(new Bot());
-    System.out.println("HuanTranslaterBot is ready");
+    Bot translatorBot = new Bot();
+
+    botsApi.registerBot(translatorBot);
+    System.out.println(translatorBot.getBotUsername() + " is ready");
   }
 }

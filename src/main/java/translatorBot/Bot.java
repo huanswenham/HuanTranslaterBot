@@ -7,12 +7,14 @@ import java.util.NoSuchElementException;
 import java.util.Properties;
 
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import com.deepl.api.*;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public class Bot extends TelegramLongPollingBot {
-  private String botUserName = "HuanTranslaterBot";
+  private String botUserName = "HuanTranslatorBot";
   private Translator translator;
 
   public Bot() {
@@ -31,8 +33,31 @@ public class Bot extends TelegramLongPollingBot {
 
   @Override
   public void onUpdateReceived(Update update) {
-    System.out.println(update);
+    var msg = update.getMessage();
+    var user = msg.getFrom();
+    var id = user.getId();
+    var text = msg.getText();
+
+    try {
+      String translatedText = translateText(text, "ZH");
+      sendText(id, translatedText);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
+
+
+  private void sendText(Long user, String msg) {
+    SendMessage sm = SendMessage.builder()
+        .chatId(user.toString())
+        .text(msg).build();
+    try {
+      execute(sm);
+    } catch (TelegramApiException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
 
   private String translateText(String text, String targetLang) throws Exception {
     TextResult result =
@@ -42,11 +67,13 @@ public class Bot extends TelegramLongPollingBot {
     return translateResult;
   }
 
+
   private void initializeTranslator() {
     // get DEEPL API Token and initialize translator
     String authKey = getBotConfigProperty("DEEPL_API_TOKEN");
     translator = new Translator(authKey);
   }
+
 
   private String getBotConfigProperty(String key) {
     try (InputStream input = new FileInputStream("src/main/resources/botConfig.properties")) {
